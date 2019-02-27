@@ -1,6 +1,7 @@
 #include "emp-ot/emp-ot.h"
 #include <emp-tool/emp-tool.h>
 #include <iostream>
+#include <vector>
 using namespace emp;
 
 template <typename IO, template <typename> class T>
@@ -164,6 +165,113 @@ double test_cot(NetIO *io, int party, int length) {
       } else {
         if (!block_cmp(&r[i], &b0[i], 1))
           error("COT failed!");
+      }
+    }
+  }
+  io->flush();
+  delete ot;
+  delete[] b0;
+  delete[] r;
+  delete[] b;
+  return t;
+}
+
+template <typename IO, template <typename> class T>
+double test_cot_fs(NetIO *io, int party, int length) {
+  block *b0 = new block[length], *r = new block[length];
+  bool *b = new bool[length];
+  std::vector<std::function<block(block)>> fs(length);
+  for (int i = 0; i < length; ++i) {
+    uint64_t x = 42;
+    auto f = [x](block s0) {
+      uint64_t v1 = (uint64_t) s0[1];
+      return makeBlock(v1 + x, 0);
+    };
+    fs[i] = f;
+  }
+  block delta;
+  PRG prg(fix_key);
+  prg.random_block(&delta, 1);
+  prg.random_bool(b, length);
+
+  io->sync();
+  auto start = clock_start();
+  T<IO> *ot = new T<IO>(io);
+  if (party == ALICE) {
+    ot->send_cot_fs(b0, fs, length);
+  } else {
+    ot->recv_cot(r, b, length);
+  }
+  io->flush();
+  long long t = time_from(start);
+  if (party == ALICE){
+    io->send_block(b0, length);
+  } else if (party == BOB) {
+    io->recv_block(b0, length);
+    for (int i = 0; i < length; ++i) {
+      block m1 = makeBlock((uint64_t)(fs[i](b0[i])[1]), 0);
+      block m0 = makeBlock((uint64_t)(b0[i][1]), 0);
+      block res = makeBlock((uint64_t)(r[i][1]), 0);
+      // std::cout << b[i] << std::endl;
+      // std::cout << (uint64_t)(m0[0]) << "|" << (uint64_t)(m0[1]) << std::endl;
+      // std::cout << (uint64_t)(m1[0]) << "|" << (uint64_t)(m1[1]) << std::endl;
+      // std::cout << (uint64_t)(res[0]) << "|" << (uint64_t)(res[1]) << std::endl;
+      if (b[i]) {
+        if (!block_cmp(&res, &m1, 1))
+          error("COT failed!\n");
+      } else {
+        if (!block_cmp(&res, &m0, 1))
+          error("COT failed!\n");
+      }
+    }
+  }
+  io->flush();
+  delete ot;
+  delete[] b0;
+  delete[] r;
+  delete[] b;
+  return t;
+}
+
+template <typename IO, template <typename> class T>
+double test_cot_add_deltas(NetIO *io, int party, int length) {
+  block *b0 = new block[length], *r = new block[length];
+  bool *b = new bool[length];
+  uint64_t *deltas = new uint64_t[length];
+  for (int i = 0; i < length; ++i) {
+    deltas[i] = i+1;
+  }
+  PRG prg(fix_key);
+  prg.random_bool(b, length);
+
+  io->sync();
+  auto start = clock_start();
+  T<IO> *ot = new T<IO>(io);
+  if (party == ALICE) {
+    ot->send_cot_add_delta(b0, deltas, length);
+  } else {
+    ot->recv_cot(r, b, length);
+  }
+  io->flush();
+  long long t = time_from(start);
+  if (party == ALICE){
+    io->send_block(b0, length);
+  } else if (party == BOB) {
+    io->recv_block(b0, length);
+    for (int i = 0; i < length; ++i) {
+      block m1 = makeBlock((uint64_t)(b0[i][1]) + deltas[i], 0);
+      block m0 = makeBlock((uint64_t)(b0[i][1]), 0);
+      block res = makeBlock((uint64_t)(r[i][1]), 0);
+      // std::cout << b[i] << std::endl;
+      // std::cout << (uint64_t)(m0[0]) << "|" << (uint64_t)(m0[1]) << std::endl;
+      // std::cout << (uint64_t)(m1[0]) << "|" << (uint64_t)(m1[1]) << std::endl;
+      // std::cout << (uint64_t)(res[0]) << "|" << (uint64_t)(res[1]) << std::endl;
+      if (b[i]) {
+        if (!block_cmp(&res, &m1, 1))
+          error("COT failed!\n");
+      } else {
+        if (!block_cmp(&res, &m0, 1))
+          error("COT failed!\n");
       }
     }
   }
