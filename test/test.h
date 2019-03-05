@@ -2,6 +2,7 @@
 #include <emp-tool/emp-tool.h>
 #include <iostream>
 #include <vector>
+#include <utility>
 using namespace emp;
 
 template <typename IO, template <typename> class T>
@@ -236,10 +237,9 @@ template <typename IO, template <typename> class T>
 double test_cot_add_deltas(NetIO *io, int party, int length) {
   block *b0 = new block[length], *r = new block[length];
   bool *b = new bool[length];
-  uint64_t *deltas = new uint64_t[2*length];
+  std::pair<uint64_t, uint64_t> *deltas = new std::pair<uint64_t, uint64_t>[length];
   for (int i = 0; i < length; ++i) {
-    deltas[i] = i+1;
-    deltas[2*i] = i+1;
+    deltas[i] = std::make_pair(i + 1, i + 2);
   }
   PRG prg(fix_key);
   prg.random_bool(b, length);
@@ -259,8 +259,8 @@ double test_cot_add_deltas(NetIO *io, int party, int length) {
   } else if (party == BOB) {
     io->recv_block(b0, length);
     for (int i = 0; i < length; ++i) {
-      block m1 = makeBlock((uint64_t)(b0[i][1]) + deltas[i],
-        (uint64_t)(b0[i][0]) + deltas[2*i]);
+      block m1 = makeBlock((uint64_t)(b0[i][0]) + deltas[i].first,
+        (uint64_t)(b0[i][1]) + deltas[i].second);
       // std::cout << b[i] << std::endl;
       // std::cout << (uint64_t)(b0[i][0]) << "|" << (uint64_t)(b0[i][1]) << std::endl;
       // std::cout << (uint64_t)(m1[0]) << "|" << (uint64_t)(m1[1]) << std::endl;

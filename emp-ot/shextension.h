@@ -71,7 +71,7 @@ class SHOTExtension: public OTExtension<IO, OTNP, emp::SHOTExtension>{ public:
 		delete[] qT;
 	}
 
-  void cot_send_post_add_delta(block * data0, uint64_t * deltas, int length) {
+  void cot_send_post_add_delta(block * data0, std::pair<uint64_t, uint64_t> * deltas, int length) {
 		const int bsize = AES_BATCH_SIZE/2;
 		block pad[2*bsize];
 		block tmp[2*bsize];
@@ -83,8 +83,8 @@ class SHOTExtension: public OTExtension<IO, OTNP, emp::SHOTExtension>{ public:
 			crh.H<2*bsize>(pad, pad);
 			for(int j = i; j < i+bsize and j < length; ++j) {
 				data0[j] = pad[2*(j-i)];
-        pad[2*(j-i)] = makeBlock((uint64_t)(pad[2*(j-i)][1]) + deltas[j],
-          (uint64_t)(pad[2*(j-i)][0]) + deltas[2*j]);
+        pad[2*(j-i)] = makeBlock((uint64_t)(pad[2*(j-i)][0]) + deltas[j].first,
+          (uint64_t)(pad[2*(j-i)][1]) + deltas[j].second);
 				tmp[j-i] = xorBlocks(pad[2*(j-i)+1], pad[2*(j-i)]);
 			}
 			io->send_data(tmp, sizeof(block)*min(bsize,length-i));
@@ -170,7 +170,7 @@ class SHOTExtension: public OTExtension<IO, OTNP, emp::SHOTExtension>{ public:
 		send_pre(length);
 		cot_send_post_fs(data0, fs, length);
 	}
-  void send_cot_add_delta(block * data0, uint64_t * deltas, int length) {
+  void send_cot_add_delta(block * data0, std::pair<uint64_t, uint64_t> * deltas, int length) {
     send_pre(length);
     cot_send_post_add_delta(data0, deltas, length);
   }
