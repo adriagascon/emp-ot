@@ -83,7 +83,8 @@ class SHOTExtension: public OTExtension<IO, OTNP, emp::SHOTExtension>{ public:
 			crh.H<2*bsize>(pad, pad);
 			for(int j = i; j < i+bsize and j < length; ++j) {
 				data0[j] = pad[2*(j-i)];
-        pad[2*(j-i)] = makeBlock((uint64_t)(pad[2*(j-i)][1]) + deltas[j], 0);
+        pad[2*(j-i)] = makeBlock((uint64_t)(pad[2*(j-i)][1]) + deltas[j],
+          (uint64_t)(pad[2*(j-i)][0]) + deltas[2*j]);
 				tmp[j-i] = xorBlocks(pad[2*(j-i)+1], pad[2*(j-i)]);
 			}
 			io->send_data(tmp, sizeof(block)*min(bsize,length-i));

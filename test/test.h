@@ -185,7 +185,8 @@ double test_cot_fs(NetIO *io, int party, int length) {
     uint64_t x = 42;
     auto f = [x](block s0) {
       uint64_t v1 = (uint64_t) s0[1];
-      return makeBlock(v1 + x, 0);
+      uint64_t v2 = (uint64_t) s0[0];
+      return makeBlock(v1 + x, v2 - x);
     };
     fs[i] = f;
   }
@@ -209,18 +210,16 @@ double test_cot_fs(NetIO *io, int party, int length) {
   } else if (party == BOB) {
     io->recv_block(b0, length);
     for (int i = 0; i < length; ++i) {
-      block m1 = makeBlock((uint64_t)(fs[i](b0[i])[1]), 0);
-      block m0 = makeBlock((uint64_t)(b0[i][1]), 0);
-      block res = makeBlock((uint64_t)(r[i][1]), 0);
+      block m1 = fs[i](b0[i]);
       // std::cout << b[i] << std::endl;
       // std::cout << (uint64_t)(m0[0]) << "|" << (uint64_t)(m0[1]) << std::endl;
       // std::cout << (uint64_t)(m1[0]) << "|" << (uint64_t)(m1[1]) << std::endl;
       // std::cout << (uint64_t)(res[0]) << "|" << (uint64_t)(res[1]) << std::endl;
       if (b[i]) {
-        if (!block_cmp(&res, &m1, 1))
+        if (!block_cmp(&r[i], &m1, 1))
           error("COT failed!\n");
       } else {
-        if (!block_cmp(&res, &m0, 1))
+        if (!block_cmp(&r[i], &b0[i], 1))
           error("COT failed!\n");
       }
     }
@@ -237,9 +236,10 @@ template <typename IO, template <typename> class T>
 double test_cot_add_deltas(NetIO *io, int party, int length) {
   block *b0 = new block[length], *r = new block[length];
   bool *b = new bool[length];
-  uint64_t *deltas = new uint64_t[length];
+  uint64_t *deltas = new uint64_t[2*length];
   for (int i = 0; i < length; ++i) {
     deltas[i] = i+1;
+    deltas[2*i] = i+1;
   }
   PRG prg(fix_key);
   prg.random_bool(b, length);
@@ -259,18 +259,17 @@ double test_cot_add_deltas(NetIO *io, int party, int length) {
   } else if (party == BOB) {
     io->recv_block(b0, length);
     for (int i = 0; i < length; ++i) {
-      block m1 = makeBlock((uint64_t)(b0[i][1]) + deltas[i], 0);
-      block m0 = makeBlock((uint64_t)(b0[i][1]), 0);
-      block res = makeBlock((uint64_t)(r[i][1]), 0);
+      block m1 = makeBlock((uint64_t)(b0[i][1]) + deltas[i],
+        (uint64_t)(b0[i][0]) + deltas[2*i]);
       // std::cout << b[i] << std::endl;
-      // std::cout << (uint64_t)(m0[0]) << "|" << (uint64_t)(m0[1]) << std::endl;
+      // std::cout << (uint64_t)(b0[i][0]) << "|" << (uint64_t)(b0[i][1]) << std::endl;
       // std::cout << (uint64_t)(m1[0]) << "|" << (uint64_t)(m1[1]) << std::endl;
-      // std::cout << (uint64_t)(res[0]) << "|" << (uint64_t)(res[1]) << std::endl;
+      // std::cout << (uint64_t)(r[i][0]) << "|" << (uint64_t)(r[i][1]) << std::endl;
       if (b[i]) {
-        if (!block_cmp(&res, &m1, 1))
+        if (!block_cmp(&r[i], &m1, 1))
           error("COT failed!\n");
       } else {
-        if (!block_cmp(&res, &m0, 1))
+        if (!block_cmp(&r[i], &b0[i], 1))
           error("COT failed!\n");
       }
     }
