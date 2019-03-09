@@ -259,8 +259,8 @@ double test_cot_add_deltas(NetIO *io, int party, int length) {
   } else if (party == BOB) {
     io->recv_block(b0, length);
     for (int i = 0; i < length; ++i) {
-      block m1 = makeBlock((uint64_t)(b0[i][0]) + deltas[i].first,
-        (uint64_t)(b0[i][1]) + deltas[i].second);
+      block m1 = makeBlock((uint64_t)(b0[i][1]) + deltas[i].second,
+        (uint64_t)(b0[i][0]) + deltas[i].first);
       // std::cout << b[i] << std::endl;
       // std::cout << (uint64_t)(b0[i][0]) << "|" << (uint64_t)(b0[i][1]) << std::endl;
       // std::cout << (uint64_t)(m1[0]) << "|" << (uint64_t)(m1[1]) << std::endl;
