@@ -51,8 +51,49 @@ class SHOTExtension: public OTExtension<IO, OTNP, emp::SHOTExtension>{ public:
 		delete[] tT;
 	}
 
+  template<typename F>
+  void cot_send_post_ft(block* data0, F f, int length) {
+    const int bsize = AES_BATCH_SIZE/2;
+		block pad[2*bsize];
+		block tmp[2*bsize];
+		for(int i = 0; i < length; i+=bsize) {
+			for(int j = i; j < i+bsize and j < length; ++j) {
+				pad[2*(j-i)] = qT[j];
+				pad[2*(j-i)+1] = xorBlocks(qT[j], block_s);
+			}
+			crh.H<2*bsize>(pad, pad);
+			for(int j = i; j < i+bsize and j < length; ++j) {
+				data0[j] = pad[2*(j-i)];
+        pad[2*(j-i)] = f(data0[j], j);
+				tmp[j-i] = xorBlocks(pad[2*(j-i)+1], pad[2*(j-i)]);
+			}
+			io->send_data(tmp, sizeof(block)*min(bsize,length-i));
+		}
+		delete[] qT;
+  }
+
+  void cot_send_post_f(block* data0, std::function<block(block, uint64_t)> f, int length) {
+    const int bsize = AES_BATCH_SIZE/2;
+		block pad[2*bsize];
+		block tmp[2*bsize];
+		for(int i = 0; i < length; i+=bsize) {
+			for(int j = i; j < i+bsize and j < length; ++j) {
+				pad[2*(j-i)] = qT[j];
+				pad[2*(j-i)+1] = xorBlocks(qT[j], block_s);
+			}
+			crh.H<2*bsize>(pad, pad);
+			for(int j = i; j < i+bsize and j < length; ++j) {
+				data0[j] = pad[2*(j-i)];
+        pad[2*(j-i)] = f(data0[j], j);
+				tmp[j-i] = xorBlocks(pad[2*(j-i)+1], pad[2*(j-i)]);
+			}
+			io->send_data(tmp, sizeof(block)*min(bsize,length-i));
+		}
+		delete[] qT;
+  }
+
   void cot_send_post_fs(block* data0, std::vector<std::function<block(block)>> fs, int length) {
-		const int bsize = AES_BATCH_SIZE/2;
+    const int bsize = AES_BATCH_SIZE/2;
 		block pad[2*bsize];
 		block tmp[2*bsize];
 		for(int i = 0; i < length; i+=bsize) {
@@ -170,6 +211,15 @@ class SHOTExtension: public OTExtension<IO, OTNP, emp::SHOTExtension>{ public:
 		send_pre(length);
 		cot_send_post_fs(data0, fs, length);
 	}
+  void send_cot_f(block * data0, std::function<block(block, uint64_t)> f, int length) {
+		send_pre(length);
+		cot_send_post_f(data0, f, length);
+	}
+  template <typename F>
+  void send_cot_ft(block * data0, F f, int length) {
+    send_pre(length);
+    cot_send_post_ft(data0, f, length);
+  }
   void send_cot_add_delta(block * data0, std::pair<uint64_t, uint64_t> * deltas, int length) {
     send_pre(length);
     cot_send_post_add_delta(data0, deltas, length);

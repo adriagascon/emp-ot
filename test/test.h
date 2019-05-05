@@ -234,6 +234,100 @@ double test_cot_fs(NetIO *io, int party, int length) {
 }
 
 template <typename IO, template <typename> class T>
+double test_cot_ft(NetIO *io, int party, int length) {
+  block *b0 = new block[length], *r = new block[length];
+  bool *b = new bool[length];
+  auto f = [](block s0, uint64_t i) {
+    uint64_t v1 = (uint64_t) s0[1];
+    uint64_t v2 = (uint64_t) s0[0];
+    return makeBlock(v1 + i, v2 - i);
+  };
+  block delta;
+  PRG prg(fix_key);
+  prg.random_block(&delta, 1);
+  prg.random_bool(b, length);
+
+  io->sync();
+  auto start = clock_start();
+  T<IO> *ot = new T<IO>(io);
+  if (party == ALICE) {
+    ot->send_cot_ft(b0, f, length);
+  } else {
+    ot->recv_cot(r, b, length);
+  }
+  io->flush();
+  long long t = time_from(start);
+  if (party == ALICE){
+    io->send_block(b0, length);
+  } else if (party == BOB) {
+    io->recv_block(b0, length);
+    for (int i = 0; i < length; ++i) {
+      block m1 = f(b0[i], i);
+      if (b[i]) {
+        if (!block_cmp(&r[i], &m1, 1))
+          error("COT failed!\n");
+      } else {
+        if (!block_cmp(&r[i], &b0[i], 1))
+          error("COT failed!\n");
+      }
+    }
+  }
+  io->flush();
+  delete ot;
+  delete[] b0;
+  delete[] r;
+  delete[] b;
+  return t;
+}
+
+template <typename IO, template <typename> class T>
+double test_cot_f(NetIO *io, int party, int length) {
+  block *b0 = new block[length], *r = new block[length];
+  bool *b = new bool[length];
+  auto f = [](block s0, uint64_t i) {
+    uint64_t v1 = (uint64_t) s0[1];
+    uint64_t v2 = (uint64_t) s0[0];
+    return makeBlock(v1 + i, v2 - i);
+  };
+  block delta;
+  PRG prg(fix_key);
+  prg.random_block(&delta, 1);
+  prg.random_bool(b, length);
+
+  io->sync();
+  auto start = clock_start();
+  T<IO> *ot = new T<IO>(io);
+  if (party == ALICE) {
+    ot->send_cot_f(b0, f, length);
+  } else {
+    ot->recv_cot(r, b, length);
+  }
+  io->flush();
+  long long t = time_from(start);
+  if (party == ALICE){
+    io->send_block(b0, length);
+  } else if (party == BOB) {
+    io->recv_block(b0, length);
+    for (int i = 0; i < length; ++i) {
+      block m1 = f(b0[i], i);
+      if (b[i]) {
+        if (!block_cmp(&r[i], &m1, 1))
+          error("COT failed!\n");
+      } else {
+        if (!block_cmp(&r[i], &b0[i], 1))
+          error("COT failed!\n");
+      }
+    }
+  }
+  io->flush();
+  delete ot;
+  delete[] b0;
+  delete[] r;
+  delete[] b;
+  return t;
+}
+
+template <typename IO, template <typename> class T>
 double test_cot_add_deltas(NetIO *io, int party, int length) {
   block *b0 = new block[length], *r = new block[length];
   bool *b = new bool[length];
